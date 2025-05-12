@@ -46,12 +46,6 @@ This repository documents my journey through the AI Engineering curriculum, focu
 └── .env.template             # Template for environment variables
 ```
 
-## 🚀 Getting Started
-
-1. Clone this repository
-2. Copy `.env.template` to `.env` and fill in your API keys
-3. Explore the sprints in order, starting with Sprint 1
-
 ## 📝 Progress Tracking
 
 My weekly progress and key learnings are documented within each sprint's README.md file.
