@@ -11,18 +11,32 @@ from llama_index.core.retrievers import QueryFusionRetriever
 import logging
 import sys
 import dotenv
+import time
+import random
+
+# Load environment variables
+dotenv.load_dotenv()
 
 # Set up logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+logger = logging.getLogger()
+logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 class FinancialPlanningBot:
     def __init__(self, pdf_path="../data/PERSONAL_FINANCIAL_PLANNING.pdf"):
         self.pdf_path = pdf_path
         self.index = None
         self.hybrid_retriever = None
-        self.llm = OpenAI(model="gpt-3.5-turbo", temperature=0.0)
-        self.llm.api_key = os.getenv("OPENAI_API_KEY")
+        
+        # Validate API key before proceeding
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable not set. Please set it and try again.")
+            
+        # Configure LLM with API key
+        self.llm = OpenAI(model="gpt-3.5-turbo", temperature=0.0, api_key=api_key)
+        
+        # Initialize embeddings with rate limiting
         self.initialize_bot()
     
     def initialize_bot(self):
@@ -45,32 +59,59 @@ class FinancialPlanningBot:
         nodes = parser.get_nodes_from_documents(documents)
         
         print("Creating embeddings and setting up retrievers...")
-        # Set up embedding model
-        embed_model = OpenAIEmbedding(model_name="text-embedding-ada-002")
-        
-        # Create index
-        self.index = VectorStoreIndex(nodes, embed_model=embed_model)
-        
-        # Create vector retriever
-        vector_retriever = VectorIndexRetriever(
-            index=self.index,
-            similarity_top_k=3,
-        )
-        
-        # Create BM25 retriever
-        bm25_retriever = BM25Retriever.from_defaults(
-            nodes=nodes,
-            similarity_top_k=3,
-        )
-        
-        # Set up hybrid retriever using query fusion
-        self.hybrid_retriever = QueryFusionRetriever(
-            retrievers=[bm25_retriever, vector_retriever],
-            similarity_top_k=3,
-            mode="simple"  # Using simple mode which is supported
-        )
+        # Set up embedding model with explicit rate limiting
+        try:
+            embed_model = OpenAIEmbedding(
+                model_name="text-embedding-ada-002",
+                api_key=os.getenv("OPENAI_API_KEY"),
+                timeout=60,  # Increase timeout
+                max_retries=3  # Limit retries
+            )
+            
+            # Create index with backoff
+            self._create_index_with_backoff(nodes, embed_model)
+            
+        except Exception as e:
+            print(f"❌ Error initializing embeddings: {str(e)}")
+            raise
         
         print("Bot is ready to answer your financial planning questions!")
+    
+    def _create_index_with_backoff(self, nodes, embed_model, max_attempts=5):
+        """Create index with exponential backoff retry logic"""
+        attempt = 0
+        while attempt < max_attempts:
+            try:
+                self.index = VectorStoreIndex(nodes, embed_model=embed_model)
+                
+                # Create vector retriever
+                vector_retriever = VectorIndexRetriever(
+                    index=self.index,
+                    similarity_top_k=3,
+                )
+                
+                # Create BM25 retriever
+                bm25_retriever = BM25Retriever.from_defaults(
+                    nodes=nodes,
+                    similarity_top_k=3,
+                )
+                
+                # Set up hybrid retriever using query fusion
+                self.hybrid_retriever = QueryFusionRetriever(
+                    retrievers=[bm25_retriever, vector_retriever],
+                    similarity_top_k=3,
+                    mode="simple"  # Using simple mode which is supported
+                )
+                return
+                
+            except Exception as e:
+                attempt += 1
+                wait_time = (2 ** attempt) + random.uniform(0, 1)  # Exponential backoff with jitter
+                print(f"Attempt {attempt}/{max_attempts} failed: {str(e)}")
+                print(f"Retrying in {wait_time:.2f} seconds...")
+                time.sleep(wait_time)
+        
+        raise RuntimeError("Failed to create index after multiple attempts")
     
     def answer_question(self, question):
         print(f"\n Question: {question}\n")
