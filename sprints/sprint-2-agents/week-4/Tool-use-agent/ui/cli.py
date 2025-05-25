@@ -2,6 +2,7 @@
 Command Line Interface for the Legal Contract Analysis Tool.
 """
 import os
+import json
 
 # Import agent functions from core module
 from core.agent import run_agent, run_agent_with_history, list_available_contracts
@@ -17,6 +18,9 @@ def display_help():
     print("summary                 - Get a summary of the current contract")
     print("search <term>           - Search for a specific term in the current contract")
     print("explain <clause>        - Explain a specific clause in simple terms")
+    print("reasoning               - Display the reasoning trace from the last analysis")
+    print("decisions               - Display the decision summary from the last analysis")
+    print("export-reasoning        - Export the reasoning trace to a JSON file")
     print("exit, quit              - Exit the application")
     print("\nYou can also ask questions in natural language about the contract.")
 
@@ -24,6 +28,7 @@ def run_cli():
     """Run the CLI interface for the Legal Contract Analysis Assistant."""
     print("🤖 Legal Contract Analysis Assistant")
     print("======================================")
+    print("Hi I'm lexi")
     print("I can help analyze legal contracts from PDF files.")
     print("Type 'help' to see available commands or 'exit' to quit.\n")
     
@@ -31,6 +36,7 @@ def run_cli():
     contract_name = None
     contract_text = None
     conversation_messages = []
+    current_reasoning_tracker = None  # Store the latest reasoning tracker
     
     # Create contracts directory if it doesn't exist
     contracts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "contracts")
@@ -88,13 +94,12 @@ def run_cli():
             if os.path.exists(contract_path):
                 print(f"\n📄 Reading contract: {os.path.basename(contract_path)}")
                 contract_text = read_pdf(contract_path)
-                
-                # Reset conversation with the new contract
+                  # Reset conversation with the new contract
                 conversation_messages = []
                 
                 # Start analysis with the new contract
                 prompt = f"I have uploaded a contract in PDF format called '{os.path.basename(contract_path)}'. Here is the text:\n\n{contract_text[:3000]}...\n\nPlease analyze this contract, extract key clauses, and provide a summary."
-                conversation_messages = run_agent(prompt)
+                conversation_messages, current_reasoning_tracker = run_agent(prompt)
                 
             else:
                 print(f"\n❌ Contract not found: {contract_name}")
@@ -105,7 +110,7 @@ def run_cli():
             if contract_text:
                 prompt = f"Please provide a concise summary of the main points in this contract."
                 conversation_messages.append({"role": "user", "content": prompt})
-                conversation_messages = run_agent_with_history(conversation_messages)
+                conversation_messages, current_reasoning_tracker = run_agent_with_history(conversation_messages)
             else:
                 print("\n❌ No contract loaded. Use 'open <contract_name>' to load a contract first.")
             continue
@@ -115,7 +120,7 @@ def run_cli():
                 search_term = user_input[7:].strip()
                 prompt = f"Please search the contract for any mentions of '{search_term}' and explain the relevant sections."
                 conversation_messages.append({"role": "user", "content": prompt})
-                conversation_messages = run_agent_with_history(conversation_messages)
+                conversation_messages, current_reasoning_tracker = run_agent_with_history(conversation_messages)
             else:
                 print("\n❌ No contract loaded. Use 'open <contract_name>' to load a contract first.")
             continue
@@ -125,16 +130,52 @@ def run_cli():
                 clause = user_input[8:].strip()
                 prompt = f"Please explain this clause in simple terms: '{clause}'"
                 conversation_messages.append({"role": "user", "content": prompt})
-                conversation_messages = run_agent_with_history(conversation_messages)
+                conversation_messages, current_reasoning_tracker = run_agent_with_history(conversation_messages)
             else:
                 print("\n❌ No contract loaded. Use 'open <contract_name>' to load a contract first.")
             continue
-        
-        # Continue the conversation with previous context
+            
+        elif user_input.lower() == 'reasoning':
+            if current_reasoning_tracker:
+                print("\n" + "="*60)
+                print("🧠 DETAILED REASONING TRACE")
+                print("="*60)
+                print(current_reasoning_tracker.get_reasoning_summary())
+            else:
+                print("\n❌ No reasoning trace available. Perform an analysis first.")
+            continue
+            
+        elif user_input.lower() == 'decisions':
+            if current_reasoning_tracker:
+                print("\n" + "="*60)
+                print("⚖️ DECISION SUMMARY")
+                print("="*60)
+                print(current_reasoning_tracker.get_decisions_summary())
+            else:
+                print("\n❌ No decision history available. Perform an analysis first.")
+            continue
+            
+        elif user_input.lower() == 'export-reasoning':
+            if current_reasoning_tracker:
+                import json
+                reasoning_data = current_reasoning_tracker.export_reasoning_trace()
+                filename = f"reasoning_trace_{current_reasoning_tracker.session_id}.json"
+                
+                try:
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        json.dump(reasoning_data, f, indent=2, ensure_ascii=False)
+                    print(f"\n✅ Reasoning trace exported to: {filename}")
+                    print(f"📊 Contains {reasoning_data['total_steps']} reasoning steps and {reasoning_data['total_decisions']} decisions")
+                except Exception as e:
+                    print(f"\n❌ Error exporting reasoning trace: {e}")
+            else:
+                print("\n❌ No reasoning trace to export. Perform an analysis first.")
+            continue
+          # Continue the conversation with previous context
         if conversation_messages:
             # Add the new user message to existing conversation
             conversation_messages.append({"role": "user", "content": user_input})
-            conversation_messages = run_agent_with_history(conversation_messages)
+            conversation_messages, current_reasoning_tracker = run_agent_with_history(conversation_messages)
         else:
             # First interaction without a contract
             print("\n❓ No contract loaded. Please use 'list' to see available contracts or 'open <contract_name>' to load a contract.")
