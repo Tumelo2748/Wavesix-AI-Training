@@ -27,6 +27,7 @@ class FinancialPlanningBot:
         self.pdf_path = pdf_path
         self.index = None
         self.hybrid_retriever = None
+        self.similarity_threshold = 0.7  # Threshold for similarity filtering
         
         # Validate API key before proceeding
         api_key = os.getenv("OPENAI_API_KEY")
@@ -121,9 +122,20 @@ class FinancialPlanningBot:
             # Retrieve relevant nodes
             retrieved_nodes = self.hybrid_retriever.retrieve(question)
             
+            # Apply similarity postprocessing to filter results
+            postprocessor = SimilarityPostprocessor(similarity_cutoff=self.similarity_threshold)
+            filtered_nodes = postprocessor.postprocess_nodes(retrieved_nodes, query_str=question)
+            
+            print(f" Found {len(filtered_nodes)} relevant chunks after similarity filtering")
+            
+            # If no nodes passed the similarity threshold, use original retrieved nodes
+            if not filtered_nodes:
+                print(" Using all retrieved nodes as none passed similarity threshold")
+                filtered_nodes = retrieved_nodes
+            
             # Build context for the query
             context_str = "\n\n".join([f"[Page {node.metadata.get('page_label', 'unknown')}]: {node.get_content()}" 
-                                        for node in retrieved_nodes])
+                                        for node in filtered_nodes])
             
             # Create prompt for the query
             query_engine_prompt = f"""You are a helpful and friendly financial planning assistant.
@@ -152,8 +164,9 @@ Answer: """
             print(direct_answer)
             
             print("\n Sources used:")
-            for i, node in enumerate(retrieved_nodes):
-                print(f"Source {i+1}: Page {node.metadata.get('page_label', 'unknown')}")
+            for i, node in enumerate(filtered_nodes):
+                print(f"Source {i+1}: Page {node.metadata.get('page_label', 'unknown')}, " 
+                      f"Score: {node.score:.4f if hasattr(node, 'score') else 'N/A'}")
                 
         except Exception as e:
             print(f"❌ Error: {e}")
