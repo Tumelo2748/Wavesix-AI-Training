@@ -172,21 +172,21 @@ with col2:
                         
                         if not detailed_analysis:
                             # Display basic feedback in expandable sections
-                            with st.expander("💪 Strengths", expanded=True):
+                            with st.expander("Strengths", expanded=True):
                                 if "strengths" in feedback and feedback["strengths"]:
                                     for strength in feedback["strengths"]:
                                         st.markdown(f"✅ {strength}")
                                 else:
                                     st.info("No strengths identified.")
                             
-                            with st.expander("🔍 Areas for Improvement", expanded=True):
+                            with st.expander("Areas for Improvement", expanded=True):
                                 if "areas_for_improvement" in feedback and feedback["areas_for_improvement"]:
                                     for area in feedback["areas_for_improvement"]:
                                         st.markdown(f"🔹 {area}")
                                 else:
                                     st.info("No areas for improvement identified.")
                             
-                            with st.expander("✏️ Suggested Edits", expanded=True):
+                            with st.expander("Suggested Edits", expanded=True):
                                 if "suggested_edits" in feedback and feedback["suggested_edits"]:
                                     for suggestion in feedback["suggested_edits"]:
                                         st.markdown(f"📝 {suggestion}")
@@ -203,7 +203,7 @@ with col2:
                                 st.progress(score/10, text=f"Resume Rating: {score}/10")
                             
                             # Display strengths with categories
-                            with st.expander("💪 Strengths", expanded=True):
+                            with st.expander("Strengths", expanded=True):
                                 if "strengths" in feedback and feedback["strengths"]:
                                     for strength in feedback["strengths"]:
                                         st.markdown(f"### {strength['category']}")
@@ -216,7 +216,7 @@ with col2:
                                     st.info("No strengths identified.")
                             
                             # Display improvement areas with potential impact
-                            with st.expander("🔍 Areas for Improvement", expanded=True):
+                            with st.expander("Areas for Improvement", expanded=True):
                                 if "improvements" in feedback and feedback["improvements"]:
                                     for improvement in feedback["improvements"]:
                                         st.markdown(f"### {improvement['category']}")
@@ -227,7 +227,7 @@ with col2:
                                     st.info("No areas for improvement identified.")
                             
                             # Display edit suggestions with reasons
-                            with st.expander("✏️ Suggested Edits", expanded=True):
+                            with st.expander("Suggested Edits", expanded=True):
                                 if "edit_suggestions" in feedback and feedback["edit_suggestions"]:
                                     for suggestion in feedback["edit_suggestions"]:
                                         st.markdown(f"### {suggestion['section']}")
@@ -243,12 +243,12 @@ with col2:
                             
                             # Display keyword analysis if available
                             if "keyword_analysis" in feedback and feedback["keyword_analysis"]:
-                                with st.expander("🔑 Keyword Analysis", expanded=True):
+                                with st.expander("Keyword Analysis", expanded=True):
                                     keyword_data = feedback["keyword_analysis"]
                                     
                                     # Present keywords
                                     if "present" in keyword_data and keyword_data["present"]:
-                                        st.markdown("### ✓ Keywords Present")
+                                        st.markdown("### Keywords Present")
                                         for keyword in keyword_data["present"]:
                                             st.markdown(f"<span style='background-color: #d4edda; padding: 3px 8px; border-radius: 10px; margin-right: 5px;'>{keyword}</span>", unsafe_allow_html=True)
                                     
