@@ -8,7 +8,7 @@ This repository documents my journey through the AI Engineering curriculum, focu
 - Week 1: GenAI Jumpstart – LLMs in Action
   - Learn n8n and create workflows
   - document my learning
-  - test repo
+  - test repo 
 - Week 2: LLM App Basics – Prompt to API
 - Week 3: Retrieval-Augmented Generation (RAG)
 
