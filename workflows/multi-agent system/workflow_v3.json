@@ -1,0 +1,269 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "model": {
+                    "__rl": true,
+                    "value": "gpt-4o-mini",
+                    "mode": "list",
+                    "cachedResultName": "gpt-4o-mini"
+                },
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.2,
+            "position": [
+                -3380,
+                3060
+            ],
+            "id": "afbe6797-ed7d-4f27-b846-299ab646621a",
+            "name": "Router LLM1",
+            "credentials": {
+                "openAiApi": {
+                    "id": "JX7XZLCcCrOdzZjY",
+                    "name": "OpenAi account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $json.chatInput }}",
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "=# Medical Assistant Routing System\n\nYou are a medical assistant that helps route patients to the correct healthcare specialist and identify if the user wants to schedule an appointment.\n\n## Tools\n\nYou have access to the following specialist assistant tools. You MUST use one of these tools to handle the user's request if it matches a specialist. If no specialist matches, you should respond directly by stating that you cannot route them to a specific specialist for their concern, and can offer general information.\n\n### Dr. Sanah Assistant (for Dentist concerns)\n- **Description**: Handles patient inquiries and scheduling for a Dentist (Dr. Sanah Johnson). Use this for dental issues, tooth pain, oral health, gum problems, teeth cleaning, cosmetic dental work, and appointment requests related to a dentist.\n- **Parameters**: This tool requires a JSON object with the following keys:\n  - `chatInput` (string, REQUIRED): The user's original message.\n  - `sessionId` (string, REQUIRED): The unique session ID for the conversation.\n  - `isSchedulingRequest` (boolean, REQUIRED): Set to `true` if the user is asking to book, reschedule, cancel, or check appointments related to a dentist; otherwise, `false`.\n\n### Dr. Michael Chen Assistant (for Optometrist concerns)\n- **Description**: Handles patient inquiries and scheduling for an Optometrist (Dr. Michael Chen). Use this for eye problems, vision issues, glasses, contact lenses, eye pain, eye exams, and appointment requests related to an optometrist.\n- **Parameters**: This tool requires a JSON object with the following keys:\n  - `chatInput` (string, REQUIRED): The user's original message.\n  - `sessionId` (string, REQUIRED): The unique session ID for the conversation.\n  - `isSchedulingRequest` (boolean, REQUIRED): Set to `true` if the user is asking to book, reschedule, cancel, or check appointments related to an optometrist; otherwise, `false`.\n\n### Dr. Emily Forbes Assistant (for Dermatologist concerns)\n- **Description**: Handles patient inquiries and scheduling for a Dermatologist (Dr. Emily Forbes). Use this for skin problems, rashes, acne, moles, skin cancer concerns, cosmetic skin treatments, and appointment requests related to a dermatologist.\n- **Parameters**: This tool requires a JSON object with the following keys:\n  - `chatInput` (string, REQUIRED): The user's original message.\n  - `sessionId` (string, REQUIRED): The unique session ID for the conversation.\n  - `isSchedulingRequest` (boolean, REQUIRED): Set to `true` if the user is asking to book, reschedule, cancel, or check appointments related to a dermatologist; otherwise, `false`.\n\n## Instructions for Responding:\n\n1.  **Analyze the user's message** to determine the appropriate specialist and if it's a scheduling request.\n2.  **Call the corresponding tool** with the correct `chatInput`, `sessionId`, and `isSchedulingRequest` parameters if a specialist matches.\n3.  **If no specialist clearly matches** the user's concern, respond directly to the user by stating that you cannot route them to a specific specialist for their concern, but you can offer general information.\n\n## Current Session Information:\n- Session ID: {{ $json.sessionId }}\n- Current date/time: {{ $now }} (Johannesburg, Gauteng, South Africa)\n"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2,
+            "position": [
+                -3080,
+                2840
+            ],
+            "id": "fa400c78-2214-490b-b2bf-a6b14e061237",
+            "name": "Routing Assistant1"
+        },
+        {
+            "parameters": {
+                "respondWith": "allIncomingItems",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -2500,
+                2840
+            ],
+            "id": "fc7b6398-0dff-4d86-94bb-217b9955cc73",
+            "name": "Send Response1"
+        },
+        {
+            "parameters": {
+                "jsonSchemaExample": "{\n  \"sessionId\": \"{{$json.sessionId}}\",\n  \"Original Message\": \"string\",\n  \"Specialist\" : \"string\",\n  \"IsSchedulingRequest\": \"string\"\n}"
+            },
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.2,
+            "position": [
+                -2620,
+                3060
+            ],
+            "id": "01729ba3-9b9a-4403-b290-74eba658ceb0",
+            "name": "Structured Output Parser1"
+        },
+        {
+            "parameters": {},
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                -3240,
+                3140
+            ],
+            "id": "ffed07d0-4877-406c-9fc3-715270ef4ca7",
+            "name": "Simple Memory4"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -3520,
+                2840
+            ],
+            "id": "0079a319-4c34-4275-bf5c-6e03ebe43226",
+            "name": "When chat message received",
+            "webhookId": "1f60d6c6-2537-45de-ba2e-18ba14ee56f4"
+        },
+        {
+            "parameters": {
+                "description": "Handles patient inquiries and scheduling for a Dermatologist (Dr. Emily Forbes). Use this for skin problems, rashes, acne, moles, skin cancer concerns, cosmetic skin treatments, and appointment requests related to a dermatologist.",
+                "workflowId": {
+                    "__rl": true,
+                    "value": "Kpc1VQtuVcmf8Vdm",
+                    "mode": "list",
+                    "cachedResultName": "Dr. Emily Forbes"
+                },
+                "workflowInputs": {
+                    "mappingMode": "defineBelow",
+                    "value": {},
+                    "matchingColumns": [],
+                    "schema": [],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "typeVersion": 2.2,
+            "position": [
+                -2800,
+                3160
+            ],
+            "id": "1b175d2c-a40b-4de6-8c4c-0bc6cb23a4cf",
+            "name": "Dr. Emily Forbes Assistant"
+        },
+        {
+            "parameters": {
+                "description": "Handles patient inquiries and scheduling for a Dentist (Dr. Sanah Johnson). Use this for dental issues, tooth pain, oral health, gum problems, teeth cleaning, cosmetic dental work, and appointment requests related to a dentist.",
+                "workflowId": {
+                    "__rl": true,
+                    "value": "DoSHtppuZkZ7R74h",
+                    "mode": "list",
+                    "cachedResultName": "Dr. Sanah Sub-Agent"
+                },
+                "workflowInputs": {
+                    "mappingMode": "defineBelow",
+                    "value": {},
+                    "matchingColumns": [],
+                    "schema": [],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "typeVersion": 2.2,
+            "position": [
+                -2940,
+                3180
+            ],
+            "id": "a136a08c-8a45-474e-ac2b-bdb7013f745b",
+            "name": "Dr. Sanah Assistant"
+        },
+        {
+            "parameters": {
+                "description": "Handles patient inquiries and scheduling for an Optometrist (Dr. Michael Chen). Use this for eye problems, vision issues, glasses, contact lenses, eye pain, eye exams, and appointment requests related to an optometrist.",
+                "workflowId": {
+                    "__rl": true,
+                    "value": "9UxPQQTgJoFC0znj",
+                    "mode": "list",
+                    "cachedResultName": "Dr. Michael Chen"
+                },
+                "workflowInputs": {
+                    "mappingMode": "defineBelow",
+                    "value": {},
+                    "matchingColumns": [],
+                    "schema": [],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "typeVersion": 2.2,
+            "position": [
+                -3080,
+                3180
+            ],
+            "id": "742354ca-9e98-47db-8b98-c3cbe0c62404",
+            "name": "Dr. Michael Chen Assistant"
+        }
+    ],
+    "connections": {
+        "Router LLM1": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Routing Assistant1": {
+            "main": [
+                [
+                    {
+                        "node": "Send Response1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser1": {
+            "ai_outputParser": [
+                []
+            ]
+        },
+        "Simple Memory4": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "When chat message received": {
+            "main": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dr. Emily Forbes Assistant": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dr. Sanah Assistant": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dr. Michael Chen Assistant": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Routing Assistant1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "6844007e08ea69919323bc6369697bd549ed2a58ecfdbeb84c57881cdbf26ef4"
+    }
+}
