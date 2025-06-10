@@ -1,0 +1,739 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "model": {
+                    "__rl": true,
+                    "value": "gpt-4o-mini",
+                    "mode": "list",
+                    "cachedResultName": "gpt-4o-mini"
+                },
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.2,
+            "position": [
+                -1460,
+                1260
+            ],
+            "id": "be7032d8-0b81-4bc8-9de3-418a63e98617",
+            "name": "Router LLM",
+            "credentials": {
+                "openAiApi": {
+                    "id": "JX7XZLCcCrOdzZjY",
+                    "name": "OpenAi account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $json.chatInput }}",
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "=# Medical Assistant Routing System\n\nYou are a medical assistant that helps route patients to the correct healthcare specialist and identify if the user wants to schedule an appointment.\n\n## Available Specialists\n\n- **Dentist**: For dental issues, tooth pain, oral health, gum problems, teeth cleaning, cosmetic dental work\n- **Optometrist**: For eye problems, vision issues, glasses, contact lenses, eye pain, eye exams\n- **Dermatologist**: For skin problems, rashes, acne, moles, skin cancer concerns, cosmetic skin treatments\n\n## Response Format\n\nRespond with a JSON object containing three keys: `Specialist`, `Original Message`, and `IsSchedulingRequest`.\n\n- **For `Specialist`**: Use ONLY ONE of these words based on the user's concern: `Dentist`, `Optometrist`, `Dermatologist`. If the concern doesn't clearly fit any category, respond with `General`.\n- **For `Original Message`**: Pass through the user's original input message exactly as received.\n- **For `IsSchedulingRequest`**: Respond with `true` if the user is asking to book, reschedule, cancel, or check appointments; otherwise, respond with `false`.\n\n## Examples\n\n### Medical Concerns (No Scheduling)\n- \"My tooth hurts\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Dentist\", \n    \"Original Message\": \"My tooth hurts\", \n    \"IsSchedulingRequest\": \"false\"\n  }\n  ```\n\n- \"I can't see clearly\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Optometrist\", \n    \"Original Message\": \"I can't see clearly\", \n    \"IsSchedulingRequest\": \"false\"\n  }\n  ```\n\n- \"I have a rash on my arm\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Dermatologist\", \n    \"Original Message\": \"I have a rash on my arm\", \n    \"IsSchedulingRequest\": \"false\"\n  }\n  ```\n\n- \"My back hurts\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"General\", \n    \"Original Message\": \"My back hurts\", \n    \"IsSchedulingRequest\": \"false\"\n  }\n  ```\n\n### Scheduling Requests\n- \"I want to book an appointment with a dentist\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Dentist\", \n    \"Original Message\": \"I want to book an appointment with a dentist\", \n    \"IsSchedulingRequest\": \"true\"\n  }\n  ```\n\n- \"Can I reschedule my eye exam?\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Optometrist\", \n    \"Original Message\": \"Can I reschedule my eye exam?\", \n    \"IsSchedulingRequest\": \"true\"\n  }\n  ```\n\n- \"Check Dr. Emily Forbes's availability\" → \n  ```json\n  {\n    \"sessionid: {{ $json.sessionId }},\n    \"Specialist\": \"Dermatologist\", \n    \"Original Message\": \"Check Dr. Emily Forbes's availability\", \n    \"IsSchedulingRequest\": \"true\"\n  }\n  ```\n\n## Session Information\n\nAdd this session to the output:\n```\n{{ $json.sessionId }}\n```"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2,
+            "position": [
+                -1420,
+                940
+            ],
+            "id": "b7a73c3b-2199-4d28-98ec-0058667073d0",
+            "name": "Routing Assistant"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Get the routing decision from the assistant\nconst output = $input.first().json.output || {};\nconst routingDecision = output.Specialist || null;\nconst userMessage = $input.first().json.chatInput;\nconst sessionId = $input.first().json.output.sessionId;\nconst isSchedulingRequest = output.IsSchedulingRequest || \"false\"; // Get the new flag\n\n// Correctly get Original Message from the output of Routing Assistant\nconst originalMessage = output['Original Message'] || userMessage;\n\n// Return the doctors data with routing info\nconst doctors = [\n  {\n    id: 1,\n    name: \"Dr. Sarah Johnson\",\n    specialty: \"Dentist\",\n    type: \"General Practice\",\n    location: {\n      address: \"123 Main Street\",\n      city: \"Cape Town\",\n      province: \"Western Cape\",\n      zipCode: \"10001\",\n      coordinates: { lat: 40.7128, lng: -74.006 },\n    },\n    subspecialties: [\"Cosmetic Dentistry\", \"Root Canal Therapy\", \"Oral Surgery\"],\n    certifications: [\"Doctor of Dental Surgery\", \"American Dental Association\", \"CPR Certified\"],\n    yearsExperience: 12,\n    graduated: 2008,\n  },\n  {\n    id: 2,\n    name: \"Dr. Michael Chen\",\n    specialty: \"Optometrist\",\n    type: \"Private Practice\",\n    location: {\n      address: \"456 Oak Avenue\",\n      city: \"Bloemfontein\",\n      province: \"Free State\",\n      zipCode: \"90210\",\n      coordinates: { lat: 34.0522, lng: -118.2437 },\n    },\n    subspecialties: [\"Contact Lens Fitting\", \"Glaucoma Management\", \"Pediatric Eye Care\"],\n    certifications: [\"Doctor of Optometry\", \"American Optometric Association\", \"Therapeutic Pharmaceutical Agent Certification\"],\n    yearsExperience: 15,\n    graduated: 2005,\n  },\n  {\n    id: 3,\n    name: \"Dr. Emily Forbes\",\n    specialty: \"Dermatologist\",\n    type: \"Medical Specialist\",\n    location: {\n      address: \"789 Pine Road\",\n      city: \"Johannesburg\",\n      province: \"Gauteng\",\n      zipCode: \"60601\",\n      coordinates: { lat: 41.8781, lng: -87.6298 },\n    },\n    subspecialties: [\"Skin Cancer Treatment\", \"Cosmetic Dermatology\", \"Pediatric Dermatology\"],\n    certifications: [\"American Board of Dermatology\", \"American Academy of Dermatology\", \"Mohs Surgery Certification\"],\n    yearsExperience: 8,\n    graduated: 2012,\n  },\n];\n\n// Add routing info to each doctor\nreturn doctors.map(doctor => ({\n  ...doctor,\n routingDecision,\n  userMessage: originalMessage, // Use the original message from the routing assistant\n  sessionId,\n  isSelected: doctor.specialty === routingDecision,\n  isSchedulingRequest: isSchedulingRequest\n}));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -920,
+                940
+            ],
+            "id": "77662233-9b36-4f38-9494-78769d250ee5",
+            "name": "Process Routing"
+        },
+        {
+            "parameters": {
+                "rules": {
+                    "values": [
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.specialty }}",
+                                        "rightValue": "Dentist",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        },
+                                        "id": "dentist-condition"
+                                    },
+                                    {
+                                        "leftValue": "={{ $json.isSelected }}",
+                                        "rightValue": true,
+                                        "operator": {
+                                            "type": "boolean",
+                                            "operation": "equals"
+                                        },
+                                        "id": "selected-condition"
+                                    }
+                                ],
+                                "combinator": "and"
+                            }
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "optometrist-condition",
+                                        "leftValue": "={{ $json.specialty }}",
+                                        "rightValue": "Optometrist",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    },
+                                    {
+                                        "leftValue": "={{ $json.isSelected }}",
+                                        "rightValue": true,
+                                        "operator": {
+                                            "type": "boolean",
+                                            "operation": "equals"
+                                        },
+                                        "id": "selected-condition-2"
+                                    }
+                                ],
+                                "combinator": "and"
+                            }
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "dermatologist-condition",
+                                        "leftValue": "={{ $json.specialty }}",
+                                        "rightValue": "Dermatologist",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    },
+                                    {
+                                        "leftValue": "={{ $json.isSelected }}",
+                                        "rightValue": true,
+                                        "operator": {
+                                            "type": "boolean",
+                                            "operation": "equals"
+                                        },
+                                        "id": "selected-condition-3"
+                                    }
+                                ],
+                                "combinator": "and"
+                            }
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3.2,
+            "position": [
+                -700,
+                940
+            ],
+            "id": "4766e1a8-f97a-4b04-93f1-55fa036e9e73",
+            "name": "Smart Switch"
+        },
+        {
+            "parameters": {
+                "model": {
+                    "__rl": true,
+                    "value": "gpt-4o-mini",
+                    "mode": "list",
+                    "cachedResultName": "gpt-4o-mini"
+                },
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.2,
+            "position": [
+                -160,
+                1180
+            ],
+            "id": "bd4d0ece-37b0-42af-8783-bf22e29619f7",
+            "name": "Doctor LLM",
+            "credentials": {
+                "openAiApi": {
+                    "id": "JX7XZLCcCrOdzZjY",
+                    "name": "OpenAi account 2"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                120,
+                980
+            ],
+            "id": "eacd4b6d-531b-4d85-b50e-65bd0b30c1ef",
+            "name": "Dentist Memory"
+        },
+        {
+            "parameters": {},
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                200,
+                1280
+            ],
+            "id": "6731fcf4-edf0-434b-b00a-13d49c26455c",
+            "name": "Optometrist Memory"
+        },
+        {
+            "parameters": {},
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                140,
+                1600
+            ],
+            "id": "915540fc-c3b1-4f09-b671-9285d363670b",
+            "name": "Dermatologist Memory"
+        },
+        {
+            "parameters": {
+                "respondWith": "allIncomingItems",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                840,
+                1060
+            ],
+            "id": "52df2bfd-190d-4478-96a1-3a398a3cedfb",
+            "name": "Send Response",
+            "disabled": true
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Routing Assistant').item.json.output['Original Message'] }}",
+                "options": {
+                    "systemMessage": "=# Assistant to Dr. Sarah Johnson – General Dentistry\n\n## Role\n\nYou are an assistant to **Dr. Sarah Johnson**, a DDS-certified dentist with 12 years of experience in general dentistry based in New York. Your primary role is to support Dr. Johnson’s practice by providing general information and managing patient interactions.\n\n---\n\n## Responsibilities\n\n- Provide general dental health information and education on Dr. Johnson's behalf  \n- Help patients understand common dental procedures and treatments  \n- Offer preventive care guidance based on Dr. Johnson's recommendations  \n- Explain dental conditions in accessible, patient-friendly language  \n- Share tips and routines for maintaining good oral hygiene  \n- Schedule, manage, and coordinate appointments with Dr. Johnson  \n- Handle basic patient inquiries and appointment requests  \n\n---\n\n## Dr. Johnson's Areas of Expertise\n\n- General dentistry and oral health  \n- Cosmetic procedures: veneers, teeth whitening, bonding  \n- Root canal therapy and endodontics  \n- Minor oral surgery  \n- Preventive care and hygiene  \n- Managing dental emergencies and acute pain  \n\n---\n\n## Communication Style\n\n- Professional, warm, and reassuring  \n- Patient-focused and empathetic  \n- Avoid jargon – use clear, non-technical language  \n- Emphasize the importance of regular dental checkups  \n- Offer practical, actionable advice  \n- Speak on behalf of Dr. Johnson and her practice  \n\n---\n\n## Important Guidelines\n\n- Always recommend patients schedule an **in-person appointment** for diagnosis  \n- Do **not** attempt to diagnose conditions remotely  \n- Refer complex or urgent cases to Dr. Johnson or a qualified specialist  \n- Reinforce preventive care and oral hygiene per Dr. Johnson’s protocols  \n- Be sensitive to dental anxiety – reassure and guide accordingly  \n- Clarify that your responses are **general information**, not medical diagnosis  \n- Urge patients to contact the office for time-sensitive concerns  \n\n---\n\n## Appointment Management\n\n- **Create Events** – Use this to book new appointments  \n- **Get All Events** – Use this to check Dr. Johnson’s availability  \n- **Update Events** – Use this to reschedule or modify appointments  \n- **Delete Events** – Use this to cancel appointments as needed  \n\n**Best Practices:**\n- Coordinate appointments based on availability and patient preference  \n- Confirm all details: date, time, visit type, and contact info  \n- Send appointment reminders and pre-visit preparation instructions  \n\n## Final Notes\nTime zone: Africa/johannesburg  \nCurrent date/time: {{ $now }}\nIf a duration for an event isn't specified, assume it will be one hour.\n"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2,
+            "position": [
+                180,
+                780
+            ],
+            "id": "126169a9-9ba7-4611-a146-56819a782432",
+            "name": "Dr. Sarah Johnson1"
+        },
+        {
+            "parameters": {
+                "jsonSchemaExample": "{\n  \"sessionId\": \"{{$json.sessionId}}\",\n  \"Original Message\": \"string\",\n  \"Specialist\" : \"string\",\n  \"IsSchedulingRequest\": \"string\"\n}"
+            },
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.2,
+            "position": [
+                -1260,
+                1200
+            ],
+            "id": "2e162c00-c69d-4b93-9ff0-45f6ceffc039",
+            "name": "Structured Output Parser"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Routing Assistant').item.json.output['Original Message'] }}",
+                "options": {
+                    "systemMessage": "=You are an assistant to Dr. Michael Chen, a Doctor of Optometry with 15 years of experience in private practice in Los Angeles. Dr. Chen specializes in contact lens fitting, glaucoma management, and pediatric eye care. He is certified by the American Optometric Association and has therapeutic pharmaceutical agent certification.\n\n## Your Role:\n\n- Provide general eye care information and education on Dr. Chen's behalf\n- Help patients understand common vision problems and eye conditions\n- Offer guidance on eye health maintenance based on Dr. Chen's recommendations\n- Explain optical procedures and treatments in accessible terms\n- Assist with information about vision correction options\n- Schedule appointments and handle basic patient inquiries\n\n## Dr. Chen's Areas of Expertise:\n\n- Comprehensive eye examinations and vision testing\nContact lens fitting and care\n- Glaucoma detection, monitoring, and management\n- Pediatric eye care and children's vision development\n- Dry eye syndrome treatment\n- Age-related eye conditions (cataracts, macular degeneration)\n- Vision correction options (glasses, contacts, surgery referrals)\n\n## Communication Style:\n\n- Knowledgeable and detail-oriented\n- Patient and thorough in explanations\n- Focused on long-term eye health\n- Encouraging about treatment options\n- Clear about when referrals to ophthalmologists are needed\n- Speak on behalf of Dr. Chen's practice and expertise\n\nImportant Guidelines:\n\n- Always recommend patients schedule a comprehensive eye exam with Dr. Chen for proper diagnosis\n- Do not attempt to diagnose eye conditions remotely - emphasize need for in-person examination\n- Distinguish between Dr. Chen's optometric care and ophthalmologic surgery when appropriate\n- Emphasize the importance of regular eye health monitoring based on Dr. Chen's protocols\n- Be clear about emergency eye care situations that require immediate attention\n- Provide education about digital eye strain and protective measures\n- Make it clear you are providing general information, not medical diagnosis\n- Encourage patients to contact the office directly for urgent eye concerns\n- Refer complex surgical cases to appropriate ophthalmologists as Dr. Chen would recommend\n\n## Appointment Management\n\n- **Create Events** – Use this to book new appointments  \n- **Get All Events** – Use this to check Dr. Chen's availability  \n- **Update Events** – Use this to reschedule or modify appointments  \n- **Delete Events** – Use this to cancel appointments as needed  \n\n**Best Practices:**\n- Coordinate appointments based on availability and patient preference  \n- Confirm all details: date, time, visit type, and contact info  \n- Send appointment reminders and pre-visit preparation instructions \n\n## Final Notes\nTime zone: Africa/johannesburg  \nCurrent date/time: {{ $now }}\nIf a duration for an event isn't specified, assume it will be one hour."
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2,
+            "position": [
+                220,
+                1060
+            ],
+            "id": "55831a92-b48a-4f60-aa7b-0743852928de",
+            "name": "Dr. Michael Chen2"
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "calendar": {
+                    "__rl": true,
+                    "value": "tumelothinane13@gmail.com",
+                    "mode": "list",
+                    "cachedResultName": "tumelothinane13@gmail.com"
+                },
+                "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.googleCalendarTool",
+            "typeVersion": 1.3,
+            "position": [
+                900,
+                1680
+            ],
+            "id": "3b71f829-1e12-43c2-88a1-fcc891e2588f",
+            "name": "Get Events",
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "bTT0PE6dEnxifqlu",
+                    "name": "Google Calendar account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "calendar": {
+                    "__rl": true,
+                    "value": "tumelothinane13@gmail.com",
+                    "mode": "list",
+                    "cachedResultName": "tumelothinane13@gmail.com"
+                },
+                "start": "={{ $fromAI(\"dayBefore\",\"the day before the date the user requested\") }}",
+                "end": "={{ $fromAI(\"dayAfter\",\"the day after the date the user requested\") }}",
+                "useDefaultReminders": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Use_Default_Reminders', ``, 'boolean') }}",
+                "additionalFields": {}
+            },
+            "type": "n8n-nodes-base.googleCalendarTool",
+            "typeVersion": 1.3,
+            "position": [
+                780,
+                1680
+            ],
+            "id": "a6ead936-1fde-43d5-9471-d568a92b6da9",
+            "name": "Create Events",
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "bTT0PE6dEnxifqlu",
+                    "name": "Google Calendar account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "delete",
+                "calendar": {
+                    "__rl": true,
+                    "value": "tumelothinane13@gmail.com",
+                    "mode": "list",
+                    "cachedResultName": "tumelothinane13@gmail.com"
+                },
+                "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.googleCalendarTool",
+            "typeVersion": 1.3,
+            "position": [
+                1020,
+                1680
+            ],
+            "id": "1d59c94c-f403-4644-9814-2d10bbad7fd2",
+            "name": "Delete Events",
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "bTT0PE6dEnxifqlu",
+                    "name": "Google Calendar account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "calendar": {
+                    "__rl": true,
+                    "value": "tumelothinane13@gmail.com",
+                    "mode": "list",
+                    "cachedResultName": "tumelothinane13@gmail.com"
+                },
+                "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+                "updateFields": {}
+            },
+            "type": "n8n-nodes-base.googleCalendarTool",
+            "typeVersion": 1.3,
+            "position": [
+                1140,
+                1680
+            ],
+            "id": "7e813a41-515e-40e1-8757-f90ffcba4799",
+            "name": "Update Events",
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "bTT0PE6dEnxifqlu",
+                    "name": "Google Calendar account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "calendar": {
+                    "__rl": true,
+                    "value": "tumelothinane13@gmail.com",
+                    "mode": "list",
+                    "cachedResultName": "tumelothinane13@gmail.com"
+                },
+                "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+                "timeMin": "={{ $fromAI(\"dayBefore\",\"the day before the date the user requested\") }}",
+                "timeMax": "={{ $fromAI(\"dayAfter\",\"the day after the date the user requested\") }}",
+                "options": {
+                    "timeZone": {
+                        "__rl": true,
+                        "value": "Africa/Johannesburg",
+                        "mode": "list",
+                        "cachedResultName": "Africa/Johannesburg"
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.googleCalendarTool",
+            "typeVersion": 1.3,
+            "position": [
+                1240,
+                1680
+            ],
+            "id": "d9379bcd-c43e-432e-9eb2-2bba1c5cbd2f",
+            "name": "Get all events",
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "bTT0PE6dEnxifqlu",
+                    "name": "Google Calendar account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Routing Assistant').item.json.output['Original Message'] }}",
+                "options": {
+                    "systemMessage": "=Role:\nYou are a knowledgeable and professional assistant to Dr. Emily Forbes, a board-certified dermatologist based in Chicago with 8 years of experience. Your role is to help patients understand their skin concerns and guide them in accordance with Dr. Forbes’s dermatological expertise and practice.\n\nYour Responsibilities:\n- Provide clear, accurate, and supportive information about dermatological conditions and treatments\n\n- Help patients understand Dr. Forbes’s recommendations and procedures\n\n- Offer general guidance on skincare, prevention, and healthy habits\n\n- Explain what to expect from dermatological visits and treatments\n\n- Direct patients to schedule in-person consultations for evaluations, diagnoses, and procedures\n\nBacked Expertise:\nYou support Dr. Forbes, who specializes in:\n\n- Medical dermatology and chronic skin disease management\n- Skin cancer detection, treatment, and Mohs surgery\n- Pediatric dermatology and childhood skin issues\n- Cosmetic dermatology, including injectables and laser therapy\n- Acne, eczema, psoriasis, and skin aging\n\nCommunication Style:\n- Friendly, supportive, and medically accurate\n- Clear and patient-focused, avoiding jargon\n- Encouraging of proactive skin health and routine care\n- Balanced between medical necessity and patient goals\n\nImportant Guidelines:\n- Always recommend an in-person skin exam for diagnosis or treatment planning\n- Never attempt to diagnose or treat skin cancer or urgent conditions remotely\n- Emphasize the importance of sun protection and routine screenings\n- Set realistic expectations for cosmetic outcomes and timelines\n- Defer final medical decisions to Dr. Emily\n- Refer patients to Dr. Emily’s office or a certified dermatologist for complex or urgent cases\n\n## Appointment Management\n\n- **Create Events** – Use this to book new appointments  \n- **Get All Events** – Use this to check Dr. Forbes’s availability  \n- **Update Events** – Use this to reschedule or modify appointments  \n- **Delete Events** – Use this to cancel appointments as needed  \n\n**Best Practices:**\n- Coordinate appointments based on availability and patient preference  \n- Confirm all details: date, time, visit type, and contact info  \n- Send appointment reminders and pre-visit preparation instructions \n\n## Final Notes\nTime zone: Africa/johannesburg  \nCurrent date/time: {{ $now }}\nIf a duration for an event isn't specified, assume it will be one hour."
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2,
+            "position": [
+                160,
+                1400
+            ],
+            "id": "19870a82-be52-4012-ab87-c68790bec784",
+            "name": "Dr. Emily Forbes"
+        },
+        {
+            "parameters": {},
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                -860,
+                1420
+            ],
+            "id": "35eb64d1-8bec-46be-a63c-c8f3013e13b4",
+            "name": "Simple Memory3"
+        }
+    ],
+    "connections": {
+        "Router LLM": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Routing Assistant",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Routing Assistant": {
+            "main": [
+                [
+                    {
+                        "node": "Process Routing",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Routing": {
+            "main": [
+                [
+                    {
+                        "node": "Smart Switch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Smart Switch": {
+            "main": [
+                [
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Doctor LLM": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dentist Memory": {
+            "ai_memory": [
+                []
+            ]
+        },
+        "Optometrist Memory": {
+            "ai_memory": [
+                []
+            ]
+        },
+        "Dermatologist Memory": {
+            "ai_memory": [
+                []
+            ]
+        },
+        "Dr. Sarah Johnson1": {
+            "main": [
+                [
+                    {
+                        "node": "Send Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "Routing Assistant",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dr. Michael Chen2": {
+            "main": [
+                [
+                    {
+                        "node": "Send Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Events": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create Events": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Delete Events": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Events": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get all events": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_tool",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Dr. Emily Forbes": {
+            "main": [
+                [
+                    {
+                        "node": "Send Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Simple Memory3": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "Routing Assistant",
+                        "type": "ai_memory",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Michael Chen2",
+                        "type": "ai_memory",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Emily Forbes",
+                        "type": "ai_memory",
+                        "index": 0
+                    },
+                    {
+                        "node": "Dr. Sarah Johnson1",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "6844007e08ea69919323bc6369697bd549ed2a58ecfdbeb84c57881cdbf26ef4"
+    }
+}
